@@ -112,6 +112,67 @@ h1 .slogan-line-1 {
   line-height: 1.7;
   margin-top: 17px;
 }
+/* The launch film as the hero */
+.film-hero {
+  position: relative;
+  margin-top: 28px;
+  aspect-ratio: 16 / 9;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  background: #111820;
+  box-shadow: 0 18px 48px -28px #344d6770;
+}
+.film-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.film-toggle {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid #ffffff55;
+  background: #111820a6;
+  color: #fff;
+  opacity: 0.75;
+  transition: opacity 0.2s;
+}
+.film-toggle:hover,
+.film-toggle:focus-visible {
+  opacity: 1;
+}
+.film-toggle svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+.film-scenes {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 650px) {
+  .film-hero {
+    margin-top: 20px;
+    border-radius: 12px;
+  }
+  .film-toggle {
+    right: 8px;
+    bottom: 8px;
+    width: 32px;
+    height: 32px;
+  }
+}
 /* Interactive organization and shared contributions */
 .hero-demo {
   margin-top: 24px;
@@ -255,9 +316,11 @@ h1 .slogan-line-1 {
   background: #edf3f9;
 }
 .contribution-grid {
+  /* The column gap, also used to size a lone last team to exactly one column. */
+  --grid-gap: 15px;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 15px;
+  gap: var(--grid-gap);
   margin-top: 23px;
 }
 .contribution-grid > div {
@@ -589,7 +652,7 @@ footer small {
   grid-column: 1 / -1;
 }
 .story .layer-study .contribution-grid > div:last-child .contribution-cells {
-  max-width: 160px;
+  max-width: calc((100% - var(--grid-gap)) / 2);
 }
 .story .layer-foot {
   flex-wrap: wrap;
@@ -925,7 +988,7 @@ footer small {
     margin-left: 65px;
   }
   .contribution-grid {
-    gap: 10px;
+    --grid-gap: 10px;
   }
   .contribution-grid > div > span {
     font-size: 8px;
@@ -1002,7 +1065,7 @@ footer small {
   }
   .contribution-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 15px;
+    --grid-gap: 15px;
   }
   .contribution-grid > div:last-child {
     grid-column: 1/-1;
@@ -1011,7 +1074,7 @@ footer small {
     font-size: 9px;
   }
   .contribution-grid > div:last-child .contribution-cells {
-    max-width: 160px;
+    max-width: calc((100% - var(--grid-gap)) / 2);
   }
   .layer-foot {
     font-size: 8px;
