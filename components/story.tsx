@@ -6,6 +6,7 @@ import AgentProfile from './agent-profile';
 import CapturedLedger from './captured-ledger';
 import AgentContext from './agent-context';
 import WisdomLayer from './wisdom-layer';
+import { DOCS_URL, GITHUB_URL, GitHubMark } from './links';
 import { agents, getCapturedSteps, DEMO_DURATION_SECONDS } from '@/lib/demo';
 
 const completedSteps = getCapturedSteps(DEMO_DURATION_SECONDS);
@@ -118,6 +119,12 @@ export default function Story() {
         <p>
           <Slogan />
         </p>
+        <nav className="footer-links" aria-label="Resources">
+          <a href={DOCS_URL}>Docs</a>
+          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+            <GitHubMark />
+          </a>
+        </nav>
         <small>
           An{' '}
           <a href="https://oqura.ai" target="_blank" rel="noopener noreferrer">

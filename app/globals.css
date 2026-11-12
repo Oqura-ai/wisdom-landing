@@ -87,6 +87,66 @@ button {
 .site-nav a:hover {
   color: var(--ink);
 }
+.github-mark {
+  width: 1.15em;
+  height: 1.15em;
+  fill: currentColor;
+  flex: none;
+}
+.nav-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+/* Docs and GitHub, under the hero heading and at the close */
+.get-started {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+  font-size: 12px;
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.button:hover {
+  border-color: #b9c8d8;
+}
+.button.primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--white);
+}
+.button.primary:hover {
+  background: #2a4058;
+}
+.button .arrow {
+  width: 14px;
+  height: 14px;
+  margin-right: -4px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.15s;
+}
+.button:hover .arrow {
+  transform: translateX(2px);
+}
 .hero-heading {
   text-align: center;
 }
@@ -617,6 +677,28 @@ footer small {
   font: 9px monospace;
   color: #9aaabb;
   margin-left: auto;
+}
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-left: auto;
+  font-size: 11px;
+}
+.footer-links a {
+  display: inline-flex;
+  color: var(--muted);
+  text-decoration: none;
+}
+.footer-links a:hover {
+  color: var(--ink);
+}
+.footer-links .github-mark {
+  width: 16px;
+  height: 16px;
+}
+.footer-links + small {
+  margin-left: 0;
 }
 /* Reveal the same hero primitives once, without introducing animation state. */
 .story .profile-study .agent-properties {
