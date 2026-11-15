@@ -1,104 +1,107 @@
-﻿import { test, expect } from '@playwright/test';
+﻿import { test, expect, type Page } from '@playwright/test';
 
-for (const width of [320, 390, 650, 768, 1280, 1600])
-  test(`layout at ${width}px: the film fits and nothing scrolls sideways`, async ({ page }) => {
+const noSideScroll = (page: Page) =>
+  page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
+
+for (const [width, height] of [
+  [320, 700],
+  [390, 844],
+  [768, 1024],
+  [1366, 700],
+  [1920, 1000],
+  [2560, 1300],
+])
+  test(`layout at ${width}x${height}: nothing scrolls sideways, no errors`, async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
-    await page.setViewportSize({ width, height: 900 });
+    await page.setViewportSize({ width, height });
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    const film = page.locator('.film-hero');
-    await expect(film).toBeVisible();
-    const box = (await film.boundingBox())!;
-    expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width).toBeLessThanOrEqual(width);
-    expect(Math.abs(box.width / box.height - 16 / 9)).toBeLessThan(0.02);
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-    ).toBeTruthy();
+    expect(await noSideScroll(page)).toBe(true);
     await page.locator('footer').scrollIntoViewIfNeeded();
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-    ).toBeTruthy();
+    expect(await noSideScroll(page)).toBe(true);
     expect(errors).toEqual([]);
   });
 
-test('the film plays muted, stays paused once paused, and stops off screen', async ({ page }) => {
+test('the nav links to the docs and GitHub, nothing else', async ({ page }) => {
   await page.goto('/');
-  const video = page.locator('.film-video');
+  const links = page.getByRole('navigation', { name: 'Main' }).getByRole('link');
+  await expect(links).toHaveCount(2);
+  await expect(links.nth(0)).toHaveAttribute('href', 'https://oqura-ai.github.io/wisdom-docs');
+  await expect(links.nth(1)).toHaveAttribute('href', 'https://github.com/Oqura-ai/wisdom');
+});
+
+test('the walkthrough is an MP4 that plays muted and stays paused once paused, and seeks', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const video = page.locator('.film video');
+  await expect(video).toHaveAttribute('src', /\.mp4$/);
   await expect(video).toHaveJSProperty('muted', true);
+  await video.scrollIntoViewIfNeeded();
   await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(false);
-  await page.getByRole('button', { name: 'Pause film' }).click();
-  await expect(page.getByRole('button', { name: 'Play film' })).toBeVisible();
+  await page.getByRole('button', { name: 'Pause walkthrough' }).click();
   await page.locator('footer').scrollIntoViewIfNeeded();
-  await page.locator('.hero-heading').scrollIntoViewIfNeeded();
+  await video.scrollIntoViewIfNeeded();
   await page.waitForTimeout(400);
   expect(await video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
-  await page.getByRole('button', { name: 'Play film' }).click();
-  await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(false);
-  await page.locator('footer').scrollIntoViewIfNeeded();
-  await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
-});
-
-test('with reduced motion the film waits for a press', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/');
-  await page.waitForTimeout(600);
-  expect(await page.locator('.film-video').evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
-  await expect(page.getByRole('button', { name: 'Play film' })).toBeVisible();
-  await expect(page.locator('#film-scenes li')).toHaveCount(9);
-});
-
-test('feature sections keep their diagrams without controls', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.locator('#captured-work .ledger-stack .task-trail')).toHaveCount(1);
-  await expect(page.locator('#shared-context .agent-properties .property-block')).toHaveCount(2);
-  await expect(page.locator('.connection-study .agent-context-diagram')).toHaveCount(1);
-  await expect(page.locator('#oversight .wisdom-layer .contribution-cell')).toHaveCount(25);
-  // Every team's boxes are one size, including a team alone on the last row.
-  const widths = await page
-    .locator('#oversight .contribution-cell')
-    .evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect().width));
-  expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(1);
-  await expect(
-    page.locator('.story button, .story section a, .story details, .story input, .story select'),
-  ).toHaveCount(0);
-});
-
-test('the story reveals once, and stays static with reduced motion', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('#captured-work').scrollIntoViewIfNeeded();
-  await expect(page.locator('#captured-work')).toHaveClass(/revealed/);
-  await page.locator('.story-intro').scrollIntoViewIfNeeded();
-  await expect(page.locator('#captured-work')).toHaveClass(/revealed/);
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.reload();
-  await page.locator('#captured-work').scrollIntoViewIfNeeded();
-  await expect(page.locator('.motion-ready')).toHaveCount(0);
-  expect(
-    await page
-      .locator('#captured-work .ledger-stack')
-      .first()
-      .evaluate((el) => getComputedStyle(el).opacity),
-  ).toBe('1');
-});
-
-test('only wordmark bots follow the cursor and the slogan stays plain', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveAccessibleName(
-    'Agents who know progress. Agents who can talk better.',
-  );
-  await expect(page.locator('h1 .face')).toHaveCount(0);
-  await expect(page.locator('.wordmark .wordmark-bot')).toHaveCount(1);
-  await expect(page.locator('.footer-brand .wordmark-bot')).toHaveCount(1);
-  const eyes = page.locator('.wordmark .face-eyes');
-  // Retry the pointer event until the lazy page hydration has attached listeners.
+  await page.getByRole('button', { name: 'Play walkthrough' }).click();
+  await page.getByRole('slider', { name: 'Seek' }).fill('70');
   await expect
-    .poll(async () => {
-      await page.mouse.move(900, 100);
-      return eyes.getAttribute('style');
-    })
-    .toMatch(/translate/);
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(eyes).not.toHaveAttribute('style', /translate/);
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
+    .toBeGreaterThan(60);
+});
+
+test('features: one wheel notch moves one feature, clips draw, skip jumps past', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const section = page.locator('#features');
+  const on = () => page.locator('.feat.on h2').textContent();
+  await page.evaluate(() => {
+    const s = document.getElementById('features')!;
+    scrollTo({ top: s.offsetTop + 10, behavior: 'instant' });
+  });
+  await expect.poll(on).toContain('Work as usual.');
+  await expect(page.locator('.feat.on .clip svg')).toHaveCount(1);
+  await page.mouse.move(700, 450);
+  await page.mouse.wheel(0, 100);
+  await expect.poll(on).toContain('Two moves read');
+  await page.getByRole('button', { name: 'Skip features' }).click();
+  await expect
+    .poll(() =>
+      section.evaluate((s: HTMLElement) => scrollY >= s.offsetTop + s.offsetHeight - innerHeight),
+    )
+    .toBe(true);
+});
+
+test('phones get a static page: poster with native controls, flat board, every feature listed', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  const video = page.locator('.film video');
+  await expect(video).toHaveJSProperty('controls', true);
+  expect(await video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
+  await expect(page.locator('.scrub')).toHaveCount(0);
+  expect(await page.locator('.board').evaluate((b) => getComputedStyle(b).transform)).not.toContain(
+    'matrix3d',
+  );
+  await expect(page.locator('.feat.on')).toHaveCount(9);
+});
+
+test('reduced motion: nothing plays on its own', async ({ browser }) => {
+  const context = await browser.newContext({
+    reducedMotion: 'reduce',
+    viewport: { width: 1440, height: 900 },
+  });
+  const page = await context.newPage();
+  await page.goto('/');
+  const video = page.locator('.film video');
+  await video.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(500);
+  expect(await video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
+  await context.close();
 });

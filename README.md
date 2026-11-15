@@ -1,6 +1,10 @@
-# Wisdom frontend
+# Wisdom landing
 
-A standalone Next.js landing-page prototype. The hero is interactive; the story below it is static content with viewport-triggered animations that run once.
+The Wisdom landing page: a Next.js app that renders to one static page.
+
+- **Hero:** a tilted contribution board with "wisdom" written in it, and the walkthrough film as an MP4.
+- **Features:** a commit tree that walks through them one at a time, each with a clip from the film.
+- **Footer:** the wordmark, with the bot as its "o".
 
 ## Run
 
@@ -21,63 +25,79 @@ npm run start
 ```sh
 npm run lint
 npm run build
-npx playwright install chromium
 npm run test:e2e
 ```
 
-Browser tests start the production app on port 3100. Build first. To use an existing Chromium installation, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to its executable path.
+The browser tests start the production app on port 3100, so build first. To use an existing Chromium or Edge, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to its executable path.
 
-The tests cover six viewport widths, agent geometry, horizontal overflow, static context diagrams, causal task sources, causal references, keyboard dismissal and focus return, reduced motion, and offscreen playback suspension.
+The tests cover:
+
+- Layout at six viewport sizes, from 320px to 2560px: no sideways scroll and no page errors.
+- The nav links.
+- The walkthrough video: it plays muted, stays paused once paused, and the progress bar seeks.
+- The features: one wheel notch moves one feature, the clips draw, and skip jumps past the section.
+- The static phone page.
+- Reduced motion.
+
+## The film
+
+The film page, `../assets/wisdom-team-final.html`, is the source for both the hero and the feature clips. Every frame of it is a pure function of time, `render(t)`.
+
+| What             | How                                                                              | Output                                              |
+| ---------------- | -------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Hero walkthrough | `npm run film:render`: draws every frame at 1920×1080 and encodes it with ffmpeg | `public/film/wisdom-walkthrough.mp4` and its poster |
+| Feature clips    | `npm run film:sync`: copies the film's drawing code                              | `lib/film/film.generated.js`                        |
+
+The feature clips are drawn live in the browser, at their own size. `lib/film/steady.ts` stages them as a _steady cut_:
+
+- The terminal rests at the left and its panel at the right.
+- Browser windows open in the same place and fade through (one fully out, then the other in) instead of sliding.
+- There's no camera, backdrop or captions.
+
+So every clip shares one crop, and its left edge lines up with the text above it.
+
+When the film changes, run both commands again. The sync script stops with a message if the film's structure changes in a way it can't follow. `film:render` needs ffmpeg on PATH and takes about 15 minutes.
 
 ## Structure
 
-The page is composed on the server. Only the hero, dashboard, and animation observers need client-side code.
+The page is composed on the server. The client components only add behaviour.
 
 ```text
-app/page.tsx
-  Hero
-    usePlayback               owns playback state and animation scheduling
-    AgentNetwork              draws teams, connections, characters, and eyes
-      useAgentLife            handles cursor gaze and visible/hidden activity
-    WisdomLayer               shows captured contributions
-    PlaybackControls          forwards user input to the playback hook
-    Dashboard (loaded on demand)
-      AgentContext            shared context diagram used again in the story
-        AgentProfile          displays properties and access rules
-        CapturedLedger        draws the static ledger stack and captured trail
-  Story                       server-rendered illustrations
-    StoryMotion               starts each viewport animation once
+app/layout.tsx            fonts (self-hosted), metadata, the page scale --z set before first paint
+app/page.tsx              nav, hero, features, footer
+app/globals.css           all styles; sizes scale with --z (page), --k (board) and --s (features)
+components/
+  board.tsx               the hero board: cells, --k, dimming on scroll, click to light a cell
+  hero-film.tsx           the MP4 under a plain video bar (play, progress, time, full screen); plays only on screen
+  features.tsx            the commit tree and features: scroll, wheel and keys step; clips; skip; auto-advance
+  footer.tsx              links, wordmark, social icons
+  footer-bot.tsx          the bot's eyes follow the pointer
+  copy-button.tsx         a shell command with a copy button
+  to-top.tsx              back to top
+lib/
+  content.tsx             every word and link on the page, tree, features, footer links
+  board.ts                the seeded board and heat strip
+  motion.ts               phone and reduced-motion rules
+  feature-clips.ts        plays film ranges into the clip figures
+  film/                   the generated film, its types, the steady cut, the video-time map
+scripts/
+  sync-film.mjs           film page -> lib/film/film.generated.js
+  render-walkthrough.mjs  film page -> public/film/*.mp4 and poster
 ```
 
-## Where to change what
+## Behaviour worth knowing
 
-| Change                                                  | File                                            |
-| ------------------------------------------------------- | ----------------------------------------------- |
-| Page content and section order                          | `app/page.tsx`, `components/story.tsx`          |
-| Agent fixtures, run stages, and causal references       | `lib/demo.ts`                                   |
-| Team placement, agent sizing, and connector endpoints   | `lib/scene-geometry.ts`                         |
-| Eye shapes and expression timing                        | `lib/agent-expression.ts`                       |
-| Cursor following and blink suspension                   | `components/use-agent-life.ts`                  |
-| Play, pause, seek, restart, and reduced-motion behavior | `lib/playback.ts`, `components/use-playback.ts` |
-| Profile labels and peer/developer visibility            | `lib/agent-profile.ts`                          |
-| Dashboard diagram and modal focus                       | `components/dashboard.tsx`                      |
-| Layout, colors, responsive rules, and CSS animations    | `app/globals.css`                               |
-
-Time values in the model use seconds; browser animation timestamps use milliseconds. Geometry is calculated in SVG coordinates, not screen pixels. Desktop and mobile scenes share the same model; CSS chooses the visible layout without a hydration-time breakpoint shift.
-
-Playback is capped at 20 updates per second and stops offscreen or when the tab is hidden. Cursor movement updates only SVG eye transforms, without React rerenders. Idle eye animations stop offscreen and while the dashboard is open. The page does not use an animation library, external fonts, or external images.
-
-## Formatting and maintenance
-
-```sh
-npm run format
-npm run format:check
-```
-
-Prettier formats the TypeScript, JSX, CSS, and tests. Keep rendering in components, pure calculations in `lib/`, and browser listeners or timers in hooks with explicit cleanup. Comments explain constraints and ownership rather than restating each line.
-
-`tests/model.spec.ts` checks playback boundaries, causal ordering, and profile visibility. `tests/landing.spec.ts` checks the rendered UI and interactions. Both run with `npm run test:e2e`.
-
-No accounts, transport contract, or live agent integration is implemented. All work records and permissions are illustrative. Task cards are derived from captured runs in `lib/agent-tasks.ts`; each demo run represents one task, with its requester resolved from an existing causal reference. The popup is a static context-sharing diagram; only its close button is interactive. Offset sheets illustrate the task archive without inventing additional captured records.
-
-Feature illustrations reuse `AgentProfile`, `CapturedLedger`, `AgentContext`, and `WisdomLayer` from the hero. Omitting the Wisdom layer callbacks renders static cells rather than controls. Story content stays server-rendered; `StoryMotion` reveals the shared primitives once per section.
+- **Phones (700px and narrower) get a static page.**
+  - The board is flat, showing just the word.
+  - Nothing animates.
+  - The walkthrough shows its poster with native controls.
+  - Every feature is listed with a still frame.
+- **Reduced motion** keeps the desktop layout, but nothing plays on its own.
+- **Big screens:**
+  - `--z` grows past 1 from about a 1600×1000 window, by the smaller of width and height, up to 2.
+  - The board scales with its own perspective, so the tilt looks the same at every size.
+- **The features walk:**
+  - Each clip plays once, holds its last frame for 1.6 seconds, then the next feature comes up.
+  - A feature without a clip stays for 5 seconds.
+  - It only moves on its own while the section is pinned on screen and the tab is visible.
+- **Fonts are self-hosted through `next/font`.** The clips read the font names from CSS variables on `<html>`, so the browser makes no requests to Google.
